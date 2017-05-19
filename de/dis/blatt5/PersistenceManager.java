@@ -21,6 +21,8 @@ public class PersistenceManager {
 	{
 		// TODO recovery after system crash
 		buffer = new HashSet<Transaction>();
+		new File("userdata").mkdirs();
+		new File("logdata").mkdirs();
 	}
 	
 	public static PersistenceManager getInstance()
@@ -49,7 +51,7 @@ public class PersistenceManager {
 		}
 		else
 		{
-			throw new Exception("Bad Transaction ID" + taid);
+			throw new Exception("Bad Transaction ID " + taid);
 		}
 	}
 	
@@ -72,7 +74,7 @@ public class PersistenceManager {
 		}
 		else
 		{
-			throw new Exception("Bad Transaction ID" + taid);
+			throw new Exception("Bad Transaction ID " + taid);
 		}
 	}
 	
@@ -125,7 +127,7 @@ public class PersistenceManager {
 	 * Basically goes for a cheap guid by counting up an integer in a file.
 	 * Should have done this with long data type, but meh.
 	 */
-	private int getNewLSN() throws IOException
+	private synchronized int getNewLSN() throws IOException
 	{
 		File file = new File(lsnfilename);
 		int lsn = 0;
@@ -156,7 +158,7 @@ public class PersistenceManager {
 	 * Basically goes for a cheap guid by counting up an integer in a file.
 	 * Should have done this with long data type, but meh.
 	 */
-	private int getNewTaid() throws IOException
+	private synchronized int getNewTaid() throws IOException
 	{
 		File file = new File(taidfilename);
 		int taid = 0;
@@ -183,9 +185,9 @@ public class PersistenceManager {
 		return taid;
 	}
 	
-	private void persistData(LogData data) throws IOException
+	private synchronized void persistData(LogData data) throws IOException
 	{
-		File file = new File("logdata\\" + data.getLSN());
+		File file = new File("logdata/" + data.getLSN());
 		if(!file.exists())
 		{
 			file.createNewFile();
@@ -204,9 +206,9 @@ public class PersistenceManager {
 		writer.close();
 	}
 	
-	private void persistData(UserData data) throws IOException
+	private synchronized void persistData(UserData data) throws IOException
 	{
-		File file = new File("userdata\\" + data.getPageID());
+		File file = new File("userdata/" + data.getPageID());
 		if(!file.exists())
 		{
 			file.createNewFile();
