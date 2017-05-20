@@ -4,7 +4,8 @@ import java.util.HashSet;
 
 public class Transaction {
 
-    private boolean active;
+    //true if committed, false otherwise
+    private boolean committed;
     private HashSet<UserData> datasets;
     private int id;
 
@@ -12,12 +13,15 @@ public class Transaction {
         return id;
     }
 
-    boolean isActive() {
-        return active;
+    /**
+     * @return true if committed, false otherwise
+     */
+    boolean isCommitted() {
+        return committed;
     }
 
-    void setActive(boolean active) {
-        this.active = active;
+    void commit() {
+        this.committed = true;
     }
 
     HashSet<UserData> getDatasets() {
@@ -25,7 +29,7 @@ public class Transaction {
     }
 
     Transaction(int id) {
-        active = true;
+        committed = true;
         datasets = new HashSet<UserData>();
         this.id = id;
     }

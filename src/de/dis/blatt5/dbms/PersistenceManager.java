@@ -28,43 +28,43 @@ public class PersistenceManager {
     }
 
     public int beginTransaction() throws IOException {
-        int taid = getNewTaid();
-        Transaction trans = new Transaction(taid);
+        int transactionId = getNewTransactionId();
+        Transaction trans = new Transaction(transactionId);
         buffer.add(trans);
-        return taid;
+        return transactionId;
     }
 
-    public static void commit(int taid) throws Exception {
-        Transaction trans = getTransaction(taid);
+    public void commit(int transactionId) throws Exception {
+        Transaction trans = getTransaction(transactionId);
         if (trans != null) {
-
+            trans.commit();
         } else {
-            throw new Exception("Bad Transaction ID " + taid);
+            throw new Exception("Bad Transaction ID " + transactionId);
         }
     }
 
     /**
      * Throws exception when the lsn file cannot be read.
      */
-    public void write(int taid, int pageid, String data) throws Exception {
-        Transaction trans = getTransaction(taid);
+    public void write(int transactionId, int pageid, String data) throws Exception {
+        Transaction trans = getTransaction(transactionId);
         if (trans != null) {
-            int newlsn = getNewLSN();
-            UserData newData = new UserData(pageid, data, newlsn);
-            LogData logdata = new LogData(pageid, data, newlsn, taid);
+            int newLsn = getNewLSN();
+            UserData newData = new UserData(pageid, data, newLsn);
+            LogData logdata = new LogData(pageid, data, newLsn, transactionId);
 
             //The ordering of following 3 statements is fundamentally important!
             persistData(logdata);
             trans.getDatasets().add(newData);
             persistUserDataIfNeeded();
         } else {
-            throw new Exception("Bad Transaction ID " + taid);
+            throw new Exception("Bad Transaction ID " + transactionId);
         }
     }
 
-    private static Transaction getTransaction(int taid) {
+    private static Transaction getTransaction(int transactionId) {
         for (Transaction t : buffer) {
-            if (t.getId() == taid)
+            if (t.getId() == transactionId)
                 return t;
         }
         return null;
@@ -81,11 +81,12 @@ public class PersistenceManager {
         for (Transaction t : buffer) {
             amountdatasets += t.getDatasets().size();
         }
+        //more than 5 datasets in write buffer --> write committed transactions
         if (amountdatasets >= 5) {
-            HashSet<Transaction> todelete = new HashSet<Transaction>();
+            HashSet<Transaction> todelete = new HashSet<>();
 
             for (Transaction t : buffer) {
-                if (!t.isActive()) {
+                if (t.isCommitted()) {
                     for (UserData data : t.getDatasets()) {
                         persistData(data);
                     }
@@ -131,16 +132,16 @@ public class PersistenceManager {
      * Basically goes for a cheap guid by counting up an integer in a file.
      * Should have done this with long data type, but meh.
      */
-    private synchronized int getNewTaid() throws IOException {
+    private synchronized int getNewTransactionId() throws IOException {
         File file = new File(TA_ID_FILE_NAME);
-        int taid = 0;
+        int transactionId = 0;
 
         if (file.exists()) {
             FileReader freader = new FileReader(file);
             BufferedReader breader = new BufferedReader(freader);
 
             String stringtaid = breader.readLine();
-            taid = Integer.parseInt(stringtaid);
+            transactionId = Integer.parseInt(stringtaid);
 
             breader.close();
         } else {
@@ -148,10 +149,10 @@ public class PersistenceManager {
         }
 
         FileWriter writer = new FileWriter(TA_ID_FILE_NAME);
-        writer.write(Integer.toString(taid + 1));
+        writer.write(Integer.toString(transactionId + 1));
         writer.close();
 
-        return taid;
+        return transactionId;
     }
 
     private synchronized void persistData(LogData data) throws IOException {
