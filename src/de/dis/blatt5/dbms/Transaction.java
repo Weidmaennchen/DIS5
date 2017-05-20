@@ -1,4 +1,4 @@
-package de.dis.blatt5;
+package de.dis.blatt5.dbms;
 
 import java.util.HashSet;
 
@@ -6,25 +6,25 @@ public class Transaction {
 
     private boolean active;
     private HashSet<UserData> datasets;
-    int id;
+    private int id;
 
-    public int getId() {
+    int getId() {
         return id;
     }
 
-    public boolean isActive() {
+    boolean isActive() {
         return active;
     }
 
-    public void setActive(boolean active) {
+    void setActive(boolean active) {
         this.active = active;
     }
 
-    public HashSet<UserData> getDatasets() {
+    HashSet<UserData> getDatasets() {
         return datasets;
     }
 
-    public Transaction(int id) {
+    Transaction(int id) {
         active = true;
         datasets = new HashSet<UserData>();
         this.id = id;

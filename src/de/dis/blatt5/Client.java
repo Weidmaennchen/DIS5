@@ -1,5 +1,7 @@
 package de.dis.blatt5;
 
+import de.dis.blatt5.dbms.PersistenceManager;
+
 public class Client extends Thread {
 
     private int id;

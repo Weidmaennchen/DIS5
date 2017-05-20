@@ -1,6 +1,6 @@
-package de.dis.blatt5;
+package de.dis.blatt5.dbms;
 
-public class UserData {
+class UserData {
 
     private int pageID;
 
@@ -8,19 +8,19 @@ public class UserData {
 
     private int LSN;
 
-    public int getPageID() {
+    int getPageID() {
         return pageID;
     }
 
-    public String getContent() {
+    String getContent() {
         return content;
     }
 
-    public int getLSN() {
+    int getLSN() {
         return LSN;
     }
 
-    public UserData(int pageID, String content, int LSN) {
+    UserData(int pageID, String content, int LSN) {
         this.pageID = pageID;
         this.content = content;
         this.LSN = LSN;

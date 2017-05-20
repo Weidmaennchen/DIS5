@@ -1,6 +1,6 @@
-package de.dis.blatt5;
+package de.dis.blatt5.dbms;
 
-public class LogData {
+class LogData {
 
     private int pageID;
 
@@ -10,23 +10,23 @@ public class LogData {
 
     private int transactionID;
 
-    public int getPageID() {
+    int getPageID() {
         return pageID;
     }
 
-    public String getContent() {
+    String getContent() {
         return content;
     }
 
-    public int getLSN() {
+    int getLSN() {
         return LSN;
     }
 
-    public int getTransactionID() {
+    int getTransactionID() {
         return transactionID;
     }
 
-    public LogData(int pageID, String content, int LSN, int transactionID) {
+    LogData(int pageID, String content, int LSN, int transactionID) {
         this.pageID = pageID;
         this.content = content;
         this.LSN = LSN;

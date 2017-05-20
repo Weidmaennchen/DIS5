@@ -1,4 +1,4 @@
-package de.dis.blatt5;
+package de.dis.blatt5.dbms;
 
 import java.io.*;
 import java.util.HashSet;
@@ -6,8 +6,8 @@ import java.util.HashSet;
 
 public class PersistenceManager {
 
-    private static String taidfilename = "taid";
-    private static String lsnfilename = "lsn";
+    private static final String TA_ID_FILE_NAME = "taid";
+    private static final String LSN_FILE_NAME = "lsn";
 
     private static PersistenceManager instance;
 
@@ -15,7 +15,7 @@ public class PersistenceManager {
 
     private PersistenceManager() {
         // TODO recovery after system crash
-        buffer = new HashSet<Transaction>();
+        buffer = new HashSet<>();
         new File("userdata").mkdirs();
         new File("logdata").mkdirs();
     }
@@ -34,7 +34,7 @@ public class PersistenceManager {
         return taid;
     }
 
-    public void commit(int taid) throws Exception {
+    public static void commit(int taid) throws Exception {
         Transaction trans = getTransaction(taid);
         if (trans != null) {
 
@@ -62,7 +62,7 @@ public class PersistenceManager {
         }
     }
 
-    private Transaction getTransaction(int taid) {
+    private static Transaction getTransaction(int taid) {
         for (Transaction t : buffer) {
             if (t.getId() == taid)
                 return t;
@@ -105,7 +105,7 @@ public class PersistenceManager {
      * Should have done this with long data type, but meh.
      */
     private synchronized int getNewLSN() throws IOException {
-        File file = new File(lsnfilename);
+        File file = new File(LSN_FILE_NAME);
         int lsn = 0;
 
         if (file.exists()) {
@@ -120,7 +120,7 @@ public class PersistenceManager {
             file.createNewFile();
         }
 
-        FileWriter writer = new FileWriter(lsnfilename);
+        FileWriter writer = new FileWriter(LSN_FILE_NAME);
         writer.write(Integer.toString(lsn + 1));
         writer.close();
 
@@ -132,7 +132,7 @@ public class PersistenceManager {
      * Should have done this with long data type, but meh.
      */
     private synchronized int getNewTaid() throws IOException {
-        File file = new File(taidfilename);
+        File file = new File(TA_ID_FILE_NAME);
         int taid = 0;
 
         if (file.exists()) {
@@ -147,7 +147,7 @@ public class PersistenceManager {
             file.createNewFile();
         }
 
-        FileWriter writer = new FileWriter(taidfilename);
+        FileWriter writer = new FileWriter(TA_ID_FILE_NAME);
         writer.write(Integer.toString(taid + 1));
         writer.close();
 
