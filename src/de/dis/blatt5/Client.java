@@ -22,7 +22,7 @@ public class Client extends Thread {
             int taid = manager.beginTransaction();
             sleep(500);
             for (int i = startpage; i < startpage + amountpages; i++) {
-                manager.write(taid, i, "TESTDATENXYZ");
+                manager.write(taid, i, "TESTDATENXYZ" + getId());
                 sleep(300 + i);
             }
             manager.commit(taid);
