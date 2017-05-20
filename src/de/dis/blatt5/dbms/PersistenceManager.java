@@ -1,9 +1,7 @@
 package de.dis.blatt5.dbms;
 
 import java.io.*;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 
@@ -23,7 +21,12 @@ public class PersistenceManager {
         // TODO recovery after system crash
         new File("userdata").mkdirs();
         new File("logdata").mkdirs();
-        failureRecovery();
+        try {
+            failureRecovery();
+        } catch (IOException e) {
+            System.out.println("recovery failed");
+            e.printStackTrace();
+        }
     }
 
     public static PersistenceManager getInstance() {
@@ -42,6 +45,8 @@ public class PersistenceManager {
         Transaction trans = getTransaction(transactionId);
         if (trans != null) {
             System.out.println("transaction " + transactionId + " committed");
+            //log the commit
+            persistData(new CommitLog(getNewLSN(), transactionId));
             trans.commit();
         } else {
             throw new Exception("Bad Transaction ID " + transactionId);
@@ -115,15 +120,112 @@ public class PersistenceManager {
     /**
      * Read the LSN from all UserData files and compare it with the last LSN from the logs
      */
-    private void failureRecovery() {
+    private void failureRecovery() throws IOException {
+        //no requirement to check if current page version is the newest
+//        HashMap<Integer, Integer> map = getLastPageVersions();
+
+        //just overwrite pages with versions from log files
+        List<UserData> lastCommittedPageVersions = getLastCommittedPageVersions();
+
+        for (UserData lastCommittedPageVersion : lastCommittedPageVersions) {
+            persistData(lastCommittedPageVersion);
+        }
+    }
+
+    /**
+     * Returns a map that maps the page id to the LSN as written in the persistent storage (currently not needed)
+     *
+     * @return
+     * @throws IOException
+     */
+    private static HashMap<Integer, Integer> getLastPageVersions() throws IOException {
         File transactionDir = new File("userdata");
+
         File[] files = transactionDir.listFiles();
-        //maps PageId to userdata object
-        HashMap<Integer, UserData> map = new HashMap<>();
+
+        if (files == null) {
+            System.out.println("error reading userdata files");
+            System.exit(1);
+        }
+
+        //maps PageId to LSN
+        HashMap<Integer, Integer> map = new HashMap<>();
 
         for (File file : files) {
+            int pageId = Integer.parseInt(file.getName());
 
+            //read the first line of the page file
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            String content = reader.readLine();
+
+            int lsn = Integer.parseInt(content.split(",")[0]);
+            map.put(pageId, lsn);
         }
+        return map;
+    }
+
+    /**
+     * returns the last version of each page reconstructured from the log files
+     *
+     * @return
+     * @throws IOException
+     */
+    private static List<UserData> getLastCommittedPageVersions() throws IOException {
+        File transactionDir = new File("logdata");
+
+        File[] files = transactionDir.listFiles();
+
+        if (files == null) {
+            System.out.println("error reading logdata files");
+            System.exit(1);
+        }
+
+        //all committed transaction ids
+        List<Integer> committedTransactionIds = new ArrayList<>();
+
+        //first collect committed transaction ids
+        for (File file : files) {
+            int LSN = Integer.parseInt(file.getName());
+
+            //read the first line of the page file
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            String[] contentParts = reader.readLine().split(",");
+
+            //only collect committed transaction ids
+            if (Objects.equals(contentParts[1], "commit")) {
+                committedTransactionIds.add(Integer.parseInt(contentParts[0]));
+            }
+        }
+
+        HashMap<Integer, UserData> map = new HashMap<>();
+        //now collect the last page contents for each page
+        for (File file : files) {
+            int LSN = Integer.parseInt(file.getName());
+
+            //read the first line of the page file
+            BufferedReader reader = new BufferedReader(new FileReader(file));
+            String[] contentParts = reader.readLine().split(",");
+
+            //ignore commits
+            if (!Objects.equals(contentParts[1], "commit")) {
+                int transactionId = Integer.parseInt(contentParts[0]);
+                int pageId = Integer.parseInt(contentParts[1]);
+
+                //only consider committed transactions
+                if (committedTransactionIds.contains(transactionId)) {
+
+                    if (map.containsKey(pageId)) {
+                        //check if current file has newer version
+                        if (map.get(pageId).getLSN() < LSN) {
+                            map.put(pageId, new UserData(pageId, contentParts[2], LSN));
+                        }
+                    } else {
+                        map.put(pageId, new UserData(pageId, contentParts[2], LSN));
+                    }
+                }
+            }
+        }
+        return new ArrayList<>(map.values());
     }
 
     /**
@@ -187,14 +289,19 @@ public class PersistenceManager {
         }
         FileWriter writer = new FileWriter(file);
 
-        StringBuilder builder = new StringBuilder();
-        builder.append(data.getTransactionID());
-        builder.append(',');
-        builder.append(data.getPageID());
-        builder.append(',');
-        builder.append(data.getContent());
+        String topersist;
+        if (data instanceof CommitLog) {
+            topersist = data.getTransactionID() + ",commit";
+        } else {
+            StringBuilder builder = new StringBuilder();
+            builder.append(data.getTransactionID());
+            builder.append(',');
+            builder.append(data.getPageID());
+            builder.append(',');
+            builder.append(data.getContent());
+            topersist = builder.toString();
+        }
 
-        String topersist = builder.toString();
         writer.write(topersist);
         writer.close();
     }
