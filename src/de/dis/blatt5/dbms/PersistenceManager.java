@@ -1,7 +1,9 @@
 package de.dis.blatt5.dbms;
 
 import java.io.*;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Set;
 
 
 public class PersistenceManager {
@@ -11,11 +13,11 @@ public class PersistenceManager {
 
     private static PersistenceManager instance;
 
-    private static HashSet<Transaction> buffer;
+    private static Set<Transaction> buffer;
 
     private PersistenceManager() {
         // TODO recovery after system crash
-        buffer = new HashSet<>();
+        buffer = Collections.synchronizedSet(new HashSet<Transaction>());
         new File("userdata").mkdirs();
         new File("logdata").mkdirs();
     }
@@ -85,18 +87,21 @@ public class PersistenceManager {
         if (amountdatasets >= 5) {
             HashSet<Transaction> todelete = new HashSet<>();
 
-            for (Transaction t : buffer) {
-                if (t.isCommitted()) {
-                    for (UserData data : t.getDatasets()) {
-                        persistData(data);
+            //this section should only enter one thread at a time
+            synchronized (this) {
+                for (Transaction t : buffer) {
+                    if (t.isCommitted()) {
+                        for (UserData data : t.getDatasets()) {
+                            persistData(data);
+                        }
+                        todelete.add(t);
                     }
-                    todelete.add(t);
                 }
-            }
 
-            //here the deletion happens. Comment out if Abnahme is n�rgeling... :)
-            for (Transaction t : todelete) {
-                buffer.remove(t);
+                //here the deletion happens. Comment out if Abnahme is n�rgeling... :)
+                for (Transaction t : todelete) {
+                    buffer.remove(t);
+                }
             }
         }
     }
