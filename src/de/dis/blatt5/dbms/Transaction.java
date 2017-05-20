@@ -5,7 +5,7 @@ import java.util.HashSet;
 public class Transaction {
 
     //true if committed, false otherwise
-    private boolean committed;
+    private boolean committed = false;
     private HashSet<UserData> datasets;
     private int id;
 
@@ -29,8 +29,8 @@ public class Transaction {
     }
 
     Transaction(int id) {
-        committed = true;
-        datasets = new HashSet<UserData>();
+        committed = false;
+        datasets = new HashSet<>();
         this.id = id;
     }
 }

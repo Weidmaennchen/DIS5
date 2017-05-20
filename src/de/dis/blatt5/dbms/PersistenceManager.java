@@ -1,9 +1,10 @@
 package de.dis.blatt5.dbms;
 
 import java.io.*;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class PersistenceManager {
@@ -12,33 +13,35 @@ public class PersistenceManager {
     private static final String LSN_FILE_NAME = "lsn";
 
     private static PersistenceManager instance;
+    private static final Set<Transaction> buffer = ConcurrentHashMap.newKeySet();
 
-    private static Set<Transaction> buffer;
+    static {
+        instance = new PersistenceManager();
+    }
 
     private PersistenceManager() {
         // TODO recovery after system crash
-        buffer = Collections.synchronizedSet(new HashSet<Transaction>());
         new File("userdata").mkdirs();
         new File("logdata").mkdirs();
+        failureRecovery();
     }
 
     public static PersistenceManager getInstance() {
-        if (PersistenceManager.instance == null) {
-            PersistenceManager.instance = new PersistenceManager();
-        }
-        return PersistenceManager.instance;
+        return instance;
     }
 
     public int beginTransaction() throws IOException {
         int transactionId = getNewTransactionId();
         Transaction trans = new Transaction(transactionId);
         buffer.add(trans);
+        System.out.println("created transaction " + transactionId);
         return transactionId;
     }
 
     public void commit(int transactionId) throws Exception {
         Transaction trans = getTransaction(transactionId);
         if (trans != null) {
+            System.out.println("transaction " + transactionId + " committed");
             trans.commit();
         } else {
             throw new Exception("Bad Transaction ID " + transactionId);
@@ -85,10 +88,11 @@ public class PersistenceManager {
         }
         //more than 5 datasets in write buffer --> write committed transactions
         if (amountdatasets >= 5) {
-            HashSet<Transaction> todelete = new HashSet<>();
+            Set<Transaction> todelete = new HashSet<>();
 
-            //this section should only enter one thread at a time
+            //only one thread at a time should enter this block
             synchronized (this) {
+//                System.out.println("thread " + Thread.currentThread().getId() + " entered persistUserDataIfNeeded sync block");
                 for (Transaction t : buffer) {
                     if (t.isCommitted()) {
                         for (UserData data : t.getDatasets()) {
@@ -100,9 +104,25 @@ public class PersistenceManager {
 
                 //here the deletion happens. Comment out if Abnahme is n�rgeling... :)
                 for (Transaction t : todelete) {
+                    System.out.println("removing transaction " + t.getId() + " from buffer");
                     buffer.remove(t);
                 }
+//                System.out.println("thread " + Thread.currentThread().getId() + " left persistUserDataIfNeeded sync block");
             }
+        }
+    }
+
+    /**
+     * Read the LSN from all UserData files and compare it with the last LSN from the logs
+     */
+    private void failureRecovery() {
+        File transactionDir = new File("userdata");
+        File[] files = transactionDir.listFiles();
+        //maps PageId to userdata object
+        HashMap<Integer, UserData> map = new HashMap<>();
+
+        for (File file : files) {
+
         }
     }
 
@@ -180,6 +200,7 @@ public class PersistenceManager {
     }
 
     private synchronized void persistData(UserData data) throws IOException {
+        System.out.println("persisting page " + data.getPageID());
         File file = new File("userdata/" + data.getPageID());
         if (!file.exists()) {
             file.createNewFile();
