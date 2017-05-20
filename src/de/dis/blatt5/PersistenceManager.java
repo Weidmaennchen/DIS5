@@ -115,7 +115,7 @@ public class PersistenceManager {
 				}								
 			}
 			
-			//here the deletion happens. Comment out if Abnahme is nörgeling... :)
+			//here the deletion happens. Comment out if Abnahme is nï¿½rgeling... :)
 			for(Transaction t : todelete)
 			{
 				buffer.remove(t);
